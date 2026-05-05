@@ -29,21 +29,23 @@ class GraphicRender:
 
     def _prepare_scaling(self, mapa: Map) -> None:
         hubs = mapa.getHubs() + [mapa.getStartHub(), mapa.getEndHub()]
-
         xs = [hub.getPosx() for hub in hubs]
         ys = [hub.getPosy() for hub in hubs]
         self.min_x, max_x = min(xs), max(xs)
         self.min_y, max_y = min(ys), max(ys)
-
         rango_x = max_x - self.min_x
         rango_y = max_y - self.min_y
 
         espacio_usable_w = self.screen_width - (self.margin * 2)
         espacio_usable_h = self.screen_height - self.menu_height - (
             self.margin * 2)
-        escala_x = espacio_usable_w / rango_x if rango_x > 0 else 1
-        escala_y = espacio_usable_h / rango_y if rango_y > 0 else 1
+        escala_x = espacio_usable_w / rango_x if rango_x > 0 else float('inf')
+        escala_y = espacio_usable_h / rango_y if rango_y > 0 else float('inf')
         self.scale = min(escala_x, escala_y)
+
+        if self.scale == float('inf'):
+            self.scale = 80
+
         mapa_ancho_real = rango_x * self.scale
         mapa_alto_real = rango_y * self.scale
         self.offset_x = (espacio_usable_w - mapa_ancho_real) / 2
@@ -144,7 +146,10 @@ class GraphicRender:
         for hub in hubs:
             px, py = self._get_px_coords(hub.getPosx(), hub.getPosy())
             radius = 15
-            color = hub.getColor()
+            try:
+                color = pygame.Color(hub.getColor())
+            except Exception:
+                color = "White"
 
             pygame.draw.circle(screen, color, (px, py), radius)
             pygame.draw.circle(screen, (200, 200, 200), (px, py), radius, 2)
@@ -184,7 +189,7 @@ class GraphicRender:
         screen.blit(text_controls, (20, y_offset + 20))
 
         if finalizado:
-            estado = "¡TODOS LOS DRONES HAN LLEGADO!"
+            estado = f"¡TODOS LOS DRONES HAN LLEGADO! Total de turnos: {turno}"
         else:
             estado = f"Turno Actual: {turno}"
         color_estado = (0, 255, 0) if finalizado else (255, 255, 0)
