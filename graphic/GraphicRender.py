@@ -5,6 +5,16 @@ from model.Drone import Drone
 
 
 class GraphicRender:
+    """
+    Handles the graphical visualization of the drone network simulation
+    using Pygame.
+
+    This class is responsible for:
+        - Scaling the map to fit the screen automatically.
+        - Rendering hubs, connections, and drones.
+        - Managing the simulation loop and user input.
+        - Displaying simulation status and controls.
+    """
     def __init__(
         self,
         screen_width: int = 1200,
@@ -12,6 +22,22 @@ class GraphicRender:
         margin: int = 100,
         fps: int = 60
     ) -> None:
+        """
+        Initialize rendering settings and visual configuration.
+
+        Args:
+            screen_width (int, optional):
+                Width of the application window in pixels.
+
+            screen_height (int, optional):
+                Height of the application window in pixels.
+
+            margin (int, optional):
+                Margin around the rendered map area.
+
+            fps (int, optional):
+                Target frames per second for the simulation.
+        """
 
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -27,8 +53,21 @@ class GraphicRender:
         self.menu_bg = (15, 15, 15)
         self.menu_text = (230, 230, 230)
 
-    def _prepare_scaling(self, mapa: Map) -> None:
-        hubs = mapa.getHubs() + [mapa.getStartHub(), mapa.getEndHub()]
+    def _prepare_scaling(self, map: Map) -> None:
+        """
+        Calculate scaling and offsets required to fit the map
+        within the available screen space.
+
+        This method determines:
+            - Minimum and maximum hub coordinates.
+            - Scaling factor for the map.
+            - Horizontal and vertical offsets for centering.
+
+        Args:
+            map (Map):
+                The network map to be rendered.
+        """
+        hubs = map.getHubs() + [map.getStartHub(), map.getEndHub()]
         xs = [hub.getPosx() for hub in hubs]
         ys = [hub.getPosy() for hub in hubs]
         self.min_x, max_x = min(xs), max(xs)
@@ -46,26 +85,51 @@ class GraphicRender:
         if self.scale == float('inf'):
             self.scale = 80
 
-        mapa_ancho_real = rango_x * self.scale
-        mapa_alto_real = rango_y * self.scale
-        self.offset_x = (espacio_usable_w - mapa_ancho_real) / 2
-        self.offset_y = (espacio_usable_h - mapa_alto_real) / 2
+        map_ancho_real = rango_x * self.scale
+        map_alto_real = rango_y * self.scale
+        self.offset_x = (espacio_usable_w - map_ancho_real) / 2
+        self.offset_y = (espacio_usable_h - map_alto_real) / 2
 
     def _get_px_coords(self, posx: int, posy: int) -> tuple[int, int]:
+        """
+        Convert logical map coordinates into screen pixel coordinates.
+
+        Args:
+            posx (int):
+                X coordinate in map space.
+
+            posy (int):
+                Y coordinate in map space.
+
+        Returns:
+            tuple[int, int]:
+                Pixel coordinates on the screen.
+        """
         x_px = self.margin + self.offset_x + ((posx - self.min_x) * self.scale)
         y_px = self.margin + self.offset_y + ((posy - self.min_y) * self.scale)
         return (int(x_px), int(y_px))
 
-    def draw_network(self, mapa: Map, drones: List[Drone]) -> None:
+    def draw_network(self, map: Map, drones: List[Drone]) -> None:
         """
-        Dibuja el mapa e inicia el bucle gráfico.
-        Controles:
-        - ESPACIO: Avanzar 1 turno.
-        - R: Reiniciar simulación (Devuelve los drones al inicio).
-        - ESC: Salir.
+        Launch and run the graphical simulation window.
+
+        Features:
+            - Displays hubs, connections, and drones.
+            - Advances the simulation turn-by-turn.
+            - Handles keyboard controls:
+                * SPACE → advance one simulation turn
+                * R → reset simulation
+                * ESC → close the window
+
+        Args:
+            map (Map):
+                The network map to visualize.
+
+            drones (List[Drone]):
+                List of drones participating in the simulation.
         """
         pygame.init()
-        self._prepare_scaling(mapa)
+        self._prepare_scaling(map)
         screen = pygame.display.set_mode((self.screen_width,
                                           self.screen_height))
         pygame.display.set_caption("Drone Network Simulator - Auto-Scaled")
@@ -115,9 +179,9 @@ class GraphicRender:
 
             screen.fill(self.bg)
 
-            self._draw_connections(screen, mapa)
-            self._draw_hubs(screen, mapa)
-            self._draw_drones(screen, drones, mapa)
+            self._draw_connections(screen, map)
+            self._draw_hubs(screen, map)
+            self._draw_drones(screen, drones, map)
             y_menu = self.screen_height - self.menu_height
             self._draw_menu(screen, self.screen_width, y_menu,
                             turno_actual, todos_en_meta)
@@ -126,12 +190,25 @@ class GraphicRender:
 
         pygame.quit()
 
-    def _draw_connections(self, screen: pygame.Surface, mapa: Map) -> None:
-        hubs_dict = {hub.getName(): hub for hub in mapa.getHubs()}
-        hubs_dict[mapa.getStartHub().getName()] = mapa.getStartHub()
-        hubs_dict[mapa.getEndHub().getName()] = mapa.getEndHub()
+    def _draw_connections(self, screen: pygame.Surface, map: Map) -> None:
+        """
+        Render all network connections between hubs.
 
-        for conn in mapa.getConnections():
+        Connections with limited capacity are drawn thicker than
+        unlimited connections.
+
+        Args:
+            screen (pygame.Surface):
+                Pygame surface where connections are drawn.
+
+            map (Map):
+                The network map containing all connections.
+        """
+        hubs_dict = {hub.getName(): hub for hub in map.getHubs()}
+        hubs_dict[map.getStartHub().getName()] = map.getStartHub()
+        hubs_dict[map.getEndHub().getName()] = map.getEndHub()
+
+        for conn in map.getConnections():
             h1 = hubs_dict.get(conn.getHub1())
             h2 = hubs_dict.get(conn.getHub2())
             if h1 and h2:
@@ -140,8 +217,21 @@ class GraphicRender:
                 thickness = 2 if conn.getMaxLink() == -1 else 6
                 pygame.draw.line(screen, self.conn_color, p1, p2, thickness)
 
-    def _draw_hubs(self, screen: pygame.Surface, mapa: Map) -> None:
-        hubs = mapa.getHubs() + [mapa.getStartHub(), mapa.getEndHub()]
+    def _draw_hubs(self, screen: pygame.Surface, map: Map) -> None:
+        """
+        Render all hubs on the screen.
+
+        Each hub is displayed as a colored circle using the hub's
+        configured color.
+
+        Args:
+            screen (pygame.Surface):
+                Pygame surface where hubs are drawn.
+
+            map (Map):
+                The network map containing all hubs.
+        """
+        hubs = map.getHubs() + [map.getStartHub(), map.getEndHub()]
 
         for hub in hubs:
             px, py = self._get_px_coords(hub.getPosx(), hub.getPosy())
@@ -149,16 +239,32 @@ class GraphicRender:
             try:
                 color = pygame.Color(hub.getColor())
             except Exception:
-                color = "White"
+                color = pygame.Color("White")
 
             pygame.draw.circle(screen, color, (px, py), radius)
             pygame.draw.circle(screen, (200, 200, 200), (px, py), radius, 2)
 
     def _draw_drones(self, screen: pygame.Surface, drones: List[Drone],
-                     mapa: Map) -> None:
-        hubs_dict = {hub.getName(): hub for hub in mapa.getHubs()}
-        hubs_dict[mapa.getStartHub().getName()] = mapa.getStartHub()
-        hubs_dict[mapa.getEndHub().getName()] = mapa.getEndHub()
+                     map: Map) -> None:
+        """
+        Render all drones at their current hub positions.
+
+        Small offsets are applied to avoid overlapping drones
+        occupying the same hub.
+
+        Args:
+            screen (pygame.Surface):
+                Pygame surface where drones are drawn.
+
+            drones (List[Drone]):
+                List of drones to render.
+
+            map (Map):
+                The network map used to resolve hub coordinates.
+        """
+        hubs_dict = {hub.getName(): hub for hub in map.getHubs()}
+        hubs_dict[map.getStartHub().getName()] = map.getStartHub()
+        hubs_dict[map.getEndHub().getName()] = map.getEndHub()
 
         for dron in drones:
             hub_actual = hubs_dict.get(dron.getPosition())
@@ -175,7 +281,31 @@ class GraphicRender:
                 pygame.draw.rect(screen, self.drone_outline, rect, 1)
 
     def _draw_menu(self, screen: pygame.Surface, width: int, y_offset: int,
-                   turno: int, finalizado: bool) -> None:
+                   turn: int, end: bool) -> None:
+        """
+        Draw the bottom information and controls menu.
+
+        Displays:
+            - Keyboard controls.
+            - Current simulation turn.
+            - Completion message when all drones reach the goal.
+
+        Args:
+            screen (pygame.Surface):
+                Pygame surface where the menu is drawn.
+
+            width (int):
+                Width of the menu area.
+
+            y_offset (int):
+                Vertical position of the menu.
+
+            turn (int):
+                Current simulation turn number.
+
+            end (bool):
+                Indicates whether the simulation has finished.
+        """
         menu_rect = pygame.Rect(0, y_offset, width, self.menu_height)
         pygame.draw.rect(screen, self.menu_bg, menu_rect)
         pygame.draw.line(screen, (100, 100, 100), (0, y_offset),
@@ -183,15 +313,15 @@ class GraphicRender:
 
         font = pygame.font.SysFont(None, 26)
 
-        text_controls = font.render("ESPACIO: Avanzar Turno   "
-                                    "|   R: Reiniciar   |   ESC: Salir",
+        text_controls = font.render("SPACE: Next turn   "
+                                    "|   R: Retry   |   ESC: Escape",
                                     True, self.menu_text)
         screen.blit(text_controls, (20, y_offset + 20))
 
-        if finalizado:
-            estado = f"¡TODOS LOS DRONES HAN LLEGADO! Total de turnos: {turno}"
+        if end:
+            estado = f"¡All the drones arrive! Total of turns: {turn}"
         else:
-            estado = f"Turno Actual: {turno}"
-        color_estado = (0, 255, 0) if finalizado else (255, 255, 0)
+            estado = f"Actual turn: {turn}"
+        color_estado = (0, 255, 0) if end else (255, 255, 0)
         text_turno = font.render(estado, True, color_estado)
         screen.blit(text_turno, (20, y_offset + 55))

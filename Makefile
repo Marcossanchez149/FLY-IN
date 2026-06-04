@@ -1,5 +1,6 @@
 PYTHON = python3
 MAIN_FILE = fly_in.py
+EXAMPLE = maps/easy/01_linear_path.txt
 
 .PHONY: install run debug clean lint lint-strict
 
@@ -7,10 +8,10 @@ install:
 	pip install -r requirements.txt
 
 run:
-	$(PYTHON) $(MAIN_FILE)
+	$(PYTHON) $(MAIN_FILE) $(EXAMPLE)
 
 debug:
-	$(PYTHON) -m pdb $(MAIN_FILE)
+	$(PYTHON) -m pdb $(MAIN_FILE) $(EXAMPLE)
 
 clean:
 	rm -rf __pycache__
